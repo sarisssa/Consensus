@@ -3,13 +3,15 @@
 pragma solidity ^0.8.13;
 
 contract MultiSig {
+    event ExecuteTransaction(uint indexed txID);
+
     address[] public owners;
     
     mapping(address => bool) public isOwner;
     
     uint public votesRequired;
 
-     //Transaction Index => Owner => Bool denoting transaction approved by I'th Owner or not
+     //Transaction Index => Owner => Bool denoting whether transaction approved by I'th Owner 
     mapping(uint => mapping(address => bool)) public ownerApproved;
 
     struct Transaction {
@@ -64,5 +66,16 @@ contract MultiSig {
         }
     }
 
-   
+    function executeTransaction(uint _txID) external {
+        require(txApprovalCount(_txID) >= votesRequired, "Insufficient number of approvals"); 
+        
+        Transaction storage curTransaction = transactionHistory[_txID];
+        curTransaction.executed = true;
+
+        (bool success, ) = curTransaction.to.call{value: curTransaction.value}(
+            curTransaction.data
+        );
+        require(success, "Transaction failed!");
+        emit ExecuteTransaction(_txID); 
+    }  
 }
