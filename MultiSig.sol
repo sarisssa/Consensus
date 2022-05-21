@@ -3,7 +3,7 @@
 pragma solidity ^0.8.13;
 
 contract MultiSig {
-    event ExecuteTransaction(uint indexed txID);
+    event ExecuteTransaction(uint indexed txID); //Should there be more events? Have limited to one event to save gas
 
     address[] public owners;
     
@@ -11,7 +11,7 @@ contract MultiSig {
     
     uint public votesRequired;
 
-     //Transaction Index => Owner => Bool denoting whether transaction approved by I'th Owner 
+    //Transaction Index => Owner => Bool denoting whether transaction approved by I'th Owner 
     mapping(uint => mapping(address => bool)) public ownerApproved;
 
     struct Transaction {
@@ -42,7 +42,7 @@ contract MultiSig {
     }
 
     receive() external payable {
-        
+        //Should there be a Deposit event here?
     }
 
     function submitTransaction(address _to, uint _valueSent, bytes calldata _data) external onlyOwner {
@@ -59,7 +59,7 @@ contract MultiSig {
     }
 
     function txApprovalCount(uint _txID) private view returns (uint count) {
-        for (uint i = 0; i < owners.length; i++) {
+        for (uint i = 0; i < owners.length; i++) { //Can we do better when getting approval count (eg. less gas?)
             if (ownerApproved[_txID][owners[i]]) {
                 count += 1;
             }
