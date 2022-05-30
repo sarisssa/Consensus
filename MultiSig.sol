@@ -2,6 +2,10 @@
 
 pragma solidity ^0.8.13;
 
+// ["0x5B38Da6a701c568545dCfcB03FcB875f56beddC4", "0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2" ], 2
+
+// "0x617F2E2fD72FD9D5503197092aC168c91465E7f2", 1000000000000000000, 0x00
+
 contract MultiSig {
     event ExecuteTransaction(uint indexed txID); //Should there be more events? Have limited to one event to save gas
 
@@ -26,6 +30,10 @@ contract MultiSig {
     modifier onlyOwner() {
         require(isOwner[msg.sender], "Caller is not an owner!");
         _;
+    }
+
+    function deposit() payable external {
+        
     }
 
     constructor(address[] memory _owners, uint _votesRequired) {
