@@ -32,6 +32,21 @@ contract MultiSig {
         _;
     }
 
+    modifier transactionExists(uint _txID) {
+        require(_txID < transactionHistory.length, "Transaction does not exist");
+        _;
+    }
+
+    modifier notApproved(uint _txID) {
+        require(!ownerApproved[_txID][msg.sender], "Transaction not approved!");
+        _;
+    }
+
+    modifier notExecuted(uint _txID) {
+        require(!transactionHistory[_txID].executed, "Transaction already executed!");
+        _;
+    }
+
     function deposit() payable external {
         
     }
@@ -74,7 +89,7 @@ contract MultiSig {
         }
     }
 
-    function executeTransaction(uint _txID) external {
+    function executeTransaction(uint _txID) external transactionExists(_txID) notExecuted(_txID) {
         require(txApprovalCount(_txID) >= votesRequired, "Insufficient number of approvals"); 
         
         Transaction storage curTransaction = transactionHistory[_txID];
