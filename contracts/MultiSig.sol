@@ -26,7 +26,7 @@ contract MultiSig {
 
     Transaction[] public transactionHistory;
 
-    event Deposit(address indexed sender, uint amount);
+    event Deposit(address indexed sender, uint depositAmount, uint contractBalance);
     event SubmitTransaction(uint indexed txID);
     event ApproveTransaction(address indexed owner, uint indexed txID);
     event ExecuteTransaction(uint indexed txID); 
@@ -56,7 +56,7 @@ contract MultiSig {
     }
 
     receive() external payable {
-        emit Deposit(msg.sender, msg.value);
+        emit Deposit(msg.sender, msg.value, address(this).balance);
     }
 
     constructor(address[] memory _owners, uint _votesRequired) {
