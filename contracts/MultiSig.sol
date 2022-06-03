@@ -39,7 +39,7 @@ contract MultiSig {
     }
 
     modifier notApproved(uint _txID) {
-        require(!ownerApproved[_txID][msg.sender], "Transaction not approved!");
+        require(!ownerApproved[_txID][msg.sender], "Transaction already approved!");
         _;
     }
 
@@ -55,7 +55,7 @@ contract MultiSig {
     constructor(address[] memory _owners, uint _votesRequired) {
         require(_owners.length > 0, "Multisig must have at least one owner!");
 
-        for (uint i = 0; i < _owners.length; i++) { //Insert owners into state variables
+        for (uint i = 0; i < _owners.length; i++) { 
             address curOwner = _owners[i];
             require(!isOwner[curOwner], "Owner already exists!");
             
@@ -78,7 +78,12 @@ contract MultiSig {
         ownerApproved[_txID][msg.sender] = true;
     }
 
-    function executeTransaction(uint _txID) external transactionExists(_txID) notExecuted(_txID) {
+    function executeTransaction(uint _txID) 
+        external 
+        transactionExists(_txID) 
+        notApproved(_txID) 
+        notExecuted(_txID) 
+    {
         require(txApprovalCount(_txID) >= votesRequired, "Insufficient number of approvals"); 
         
         Transaction storage curTransaction = transactionHistory[_txID];
@@ -92,7 +97,7 @@ contract MultiSig {
     }  
 
     function txApprovalCount(uint _txID) private view returns (uint count) {
-        for (uint i = 0; i < owners.length; i++) { //Can we do better when getting approval count (eg. less gas?)
+        for (uint i = 0; i < owners.length; i++) { 
             if (ownerApproved[_txID][owners[i]]) {
                 count += 1;
             }
