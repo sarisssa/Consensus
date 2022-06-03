@@ -8,7 +8,7 @@ pragma solidity ^0.8.13;
 
 contract MultiSig {
 
-     struct Transaction {
+    struct Transaction {
         address to;
         uint value;
         bytes data;
@@ -26,6 +26,9 @@ contract MultiSig {
 
     Transaction[] public transactionHistory;
 
+    event Deposit(address indexed sender, uint amount);
+    event SubmitTransaction(uint indexed txID);
+    event ApproveTransaction(address indexed owner, uint indexed txID);
     event ExecuteTransaction(uint indexed txID); 
 
     modifier onlyOwner() {
@@ -52,6 +55,10 @@ contract MultiSig {
         
     }
 
+    receive() external payable {
+        emit Deposit(msg.sender, msg.value);
+    }
+
     constructor(address[] memory _owners, uint _votesRequired) {
         require(_owners.length > 0, "Multisig must have at least one owner!");
 
@@ -72,10 +79,12 @@ contract MultiSig {
             data: _data,
             executed: false
         }));
+        emit SubmitTransaction(transactionHistory.length - 1);
     }
 
     function approveTransaction(uint _txID) external onlyOwner {
         ownerApproved[_txID][msg.sender] = true;
+        emit ApproveTransaction(msg.sender, _txID);
     }
 
     function executeTransaction(uint _txID) 
