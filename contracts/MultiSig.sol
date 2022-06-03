@@ -7,7 +7,13 @@ pragma solidity ^0.8.13;
 // "0x617F2E2fD72FD9D5503197092aC168c91465E7f2", 1000000000000000000, 0x00
 
 contract MultiSig {
-    event ExecuteTransaction(uint indexed txID); //Should there be more events? Have limited to one event to save gas
+
+     struct Transaction {
+        address to;
+        uint value;
+        bytes data;
+        bool executed;
+    }
 
     address[] public owners;
     
@@ -18,14 +24,9 @@ contract MultiSig {
     //Transaction Index => Owner => Bool denoting whether transaction approved by I'th Owner 
     mapping(uint => mapping(address => bool)) public ownerApproved;
 
-    struct Transaction {
-        address to;
-        uint value;
-        bytes data;
-        bool executed;
-    }
-
     Transaction[] public transactionHistory;
+
+    event ExecuteTransaction(uint indexed txID); 
 
     modifier onlyOwner() {
         require(isOwner[msg.sender], "Caller is not an owner!");
@@ -64,10 +65,6 @@ contract MultiSig {
         votesRequired = _votesRequired;
     }
 
-    receive() external payable {
-        //Should there be a Deposit event here?
-    }
-
     function submitTransaction(address _to, uint _valueSent, bytes calldata _data) external onlyOwner {
         transactionHistory.push(Transaction({
             to: _to,
@@ -79,14 +76,6 @@ contract MultiSig {
 
     function approveTransaction(uint _txID) external onlyOwner {
         ownerApproved[_txID][msg.sender] = true;
-    }
-
-    function txApprovalCount(uint _txID) private view returns (uint count) {
-        for (uint i = 0; i < owners.length; i++) { //Can we do better when getting approval count (eg. less gas?)
-            if (ownerApproved[_txID][owners[i]]) {
-                count += 1;
-            }
-        }
     }
 
     function executeTransaction(uint _txID) external transactionExists(_txID) notExecuted(_txID) {
@@ -101,4 +90,12 @@ contract MultiSig {
         require(success, "Transaction failed!");
         emit ExecuteTransaction(_txID); 
     }  
+
+    function txApprovalCount(uint _txID) private view returns (uint count) {
+        for (uint i = 0; i < owners.length; i++) { //Can we do better when getting approval count (eg. less gas?)
+            if (ownerApproved[_txID][owners[i]]) {
+                count += 1;
+            }
+        }
+    }   
 }
