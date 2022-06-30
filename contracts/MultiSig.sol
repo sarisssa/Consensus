@@ -7,63 +7,65 @@ pragma solidity ^0.8.13;
 // "0x617F2E2fD72FD9D5503197092aC168c91465E7f2", 1000000000000000000, 0x00
 
 contract MultiSig {
+    event Deposit(address indexed sender, uint256 depositAmount, uint256 contractBalance);
+    event SubmitTransaction(
+        address indexed owner,
+        uint256 indexed txIndex,
+        address indexed to,
+        uint256 value,
+        bytes data
+    );
+    event ApproveTransaction(address indexed owner, uint256 indexed txID);
+    event ExecuteTransaction(address indexed owner, uint256 indexed txID);
+
+    address[] public owners;
+    mapping(address => bool) public isOwner; 
+    uint256 public votesRequired;
 
     struct Transaction {
         address to;
-        uint value;
+        uint256 value;
         bytes data;
         bool executed;
+        uint256 numConfirmations;
     }
 
-    address[] public owners;
-    
-    mapping(address => bool) public isOwner;
-    
-    uint public votesRequired;
-
     //Transaction Index => Owner => Bool denoting whether transaction approved by I'th Owner 
-    mapping(uint => mapping(address => bool)) public ownerApproved;
+    mapping(uint256 => mapping(address => bool)) public ownerApproved;
 
     Transaction[] public transactionHistory;
-
-    event Deposit(address indexed sender, uint depositAmount, uint contractBalance);
-    event SubmitTransaction(uint indexed txID);
-    event ApproveTransaction(address indexed owner, uint indexed txID);
-    event ExecuteTransaction(uint indexed txID); 
 
     modifier onlyOwner() {
         require(isOwner[msg.sender], "Caller is not an owner!");
         _;
     }
 
-    modifier transactionExists(uint _txID) {
+    modifier transactionExists(uint256 _txID) {
         require(_txID < transactionHistory.length, "Transaction does not exist");
         _;
     }
 
-    modifier notApproved(uint _txID) {
+    modifier notApproved(uint256 _txID) {
         require(!ownerApproved[_txID][msg.sender], "Transaction already approved!");
         _;
     }
 
-    modifier notExecuted(uint _txID) {
+    modifier notExecuted(uint256 _txID) {
         require(!transactionHistory[_txID].executed, "Transaction already executed!");
         _;
     }
 
-    function deposit() payable external {
-        
-    }
-
-    receive() external payable {
-        emit Deposit(msg.sender, msg.value, address(this).balance);
-    }
-
-    constructor(address[] memory _owners, uint _votesRequired) {
+    constructor(address[] memory _owners, uint256 _votesRequired) {
         require(_owners.length > 0, "Multisig must have at least one owner!");
+        require(
+            _votesRequired > 0 && 
+            _votesRequired <= _owners.length, 
+            "Invalid number of required confirmations"
+        );
 
-        for (uint i = 0; i < _owners.length; i++) { 
+        for (uint256 i = 0; i < _owners.length; i++) { 
             address curOwner = _owners[i];
+            require(curOwner != address(0), "Invalid owner");
             require(!isOwner[curOwner], "Owner already exists!");
             
             isOwner[curOwner] = true;
@@ -72,22 +74,41 @@ contract MultiSig {
         votesRequired = _votesRequired;
     }
 
-    function submitTransaction(address _to, uint _valueSent, bytes calldata _data) external onlyOwner {
-        transactionHistory.push(Transaction({
-            to: _to,
-            value: _valueSent,
-            data: _data,
-            executed: false
-        }));
-        emit SubmitTransaction(transactionHistory.length - 1);
+    function deposit() external payable {
+        
     }
 
-    function approveTransaction(uint _txID) external onlyOwner {
+    receive() external payable {
+        emit Deposit(msg.sender, msg.value, address(this).balance);
+    }
+
+    function submitTransaction(
+        address _to, 
+        uint256 _value, 
+        bytes calldata _data
+    ) external onlyOwner {
+        // uint256 txIndex = transactionHistory.length; Should we apply -1 to this?
+
+        transactionHistory.push(Transaction({
+            to: _to,
+            value: _value,
+            data: _data,
+            executed: false,
+            numConfirmations: 0
+        }));
+        emit SubmitTransaction(msg.sender, transactionHistory.length - 1, _to, _value, _data);
+    }
+
+    function approveTransaction(uint256 _txID) external 
+        onlyOwner 
+        transactionExists(_txID) 
+        notApproved(_txID) 
+        notExecuted(_txID)  {
         ownerApproved[_txID][msg.sender] = true;
         emit ApproveTransaction(msg.sender, _txID);
     }
 
-    function executeTransaction(uint _txID) 
+    function executeTransaction(uint256 _txID) 
         external 
         transactionExists(_txID) 
         notApproved(_txID) 
@@ -102,14 +123,17 @@ contract MultiSig {
             curTransaction.data
         );
         require(success, "Transaction failed!");
-        emit ExecuteTransaction(_txID); 
+        emit ExecuteTransaction(msg.sender, _txID); 
     }  
 
-    function txApprovalCount(uint _txID) private view returns (uint count) {
-        for (uint i = 0; i < owners.length; i++) { 
+    function txApprovalCount(uint256 _txID) private view returns (uint256 count) {
+        uint256 length = owners.length;
+
+        for (uint256 i = 0; i < length; i++) { 
             if (ownerApproved[_txID][owners[i]]) {
                 count += 1;
             }
         }
     }   
 }
+
